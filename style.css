@@ -1,0 +1,31 @@
+:root{--bg:#000;--fg:#e3f2ff;--c:rgb(82,182,255);box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;height:100%;background:var(--bg);color:var(--fg);font:300 13px/1.5 'Be Vietnam Pro',system-ui,-apple-system,'Segoe UI',sans-serif;overflow:hidden;-webkit-tap-highlight-color:transparent}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:pointer;-webkit-tap-highlight-color:transparent}
+#hint{position:fixed;left:0;right:0;text-align:center;font:italic 500 21px 'Cormorant Garamond',Georgia,serif;color:var(--c);pointer-events:none;animation:br 3.2s ease-in-out infinite}
+@keyframes br{50%{opacity:.35}}
+#ui{position:fixed;right:0;bottom:0;display:flex;flex-direction:column;align-items:flex-end;gap:8px;padding:0 12px calc(14px + env(safe-area-inset-bottom,0px))}#ui button:not(.tg){display:none}#ui.open button{display:block}.tg{width:40px;height:40px;padding:0;border-radius:50%;font-size:18px;line-height:1}
+button{font:inherit;font-weight:500;font-size:12.5px;color:var(--fg);background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:9px 15px;cursor:pointer;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);transition:.25s}
+button[aria-pressed=true]{color:var(--c);border-color:var(--c);box-shadow:0 0 16px -3px var(--c)}
+button:focus-visible{outline:2px solid var(--c);outline-offset:3px}
+#toast{position:fixed;left:50%;bottom:calc(112px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);max-width:88vw;padding:9px 16px;border-radius:14px;background:rgba(0,0,0,.72);border:1px solid var(--c);text-align:center;opacity:0;pointer-events:none;transition:opacity .5s}
+#toast.on{opacity:1}
+@media (prefers-reduced-motion:reduce){#hint{animation:none}}
+#bd{position:fixed;inset:0;z-index:4;background:radial-gradient(circle at 50% 50%,rgba(6,14,32,.35),rgba(2,6,16,.82));opacity:0;pointer-events:none;transition:opacity .7s}
+#bd.on{opacity:1;pointer-events:auto}
+#card{position:fixed;left:50%;top:50%;z-index:5;display:none;box-sizing:border-box;width:min(86vw,460px);max-height:min(82vh,680px);overflow:auto;padding:38px 32px 30px;border-radius:8px;color:#27304a;text-align:center;background:radial-gradient(120% 90% at 20% 0%,rgba(190,225,255,.55),rgba(190,225,255,0) 60%),linear-gradient(160deg,#fcf7ea,#eadfc4);box-shadow:0 0 80px rgba(130,200,255,.55),0 26px 70px rgba(0,0,0,.65);transform:translate(calc(-50% + var(--dx,0px)),calc(-50% + var(--dy,0px))) scale(var(--s,.2));opacity:0;pointer-events:none;transition:transform .95s cubic-bezier(.18,.9,.22,1),opacity .5s}
+#card.on{transform:translate(-50%,-50%) scale(1);opacity:1;pointer-events:auto}
+#card h2{margin:0 0 16px;font:600 31px/1.25 'Dancing Script','Cormorant Garamond',cursive,serif;color:#1d3a66}
+#card p{margin:0 0 14px;font-size:15.5px;line-height:1.8;font-weight:300;opacity:0;transform:translateY(8px)}
+#card.on p{animation:rv .9s ease forwards;animation-delay:calc(.75s + var(--i,0)*.45s)}
+@keyframes rv{to{opacity:1;transform:none}}
+#card .sg{margin-top:18px;font:600 25px 'Dancing Script',cursive;color:#1d3a66;opacity:0}
+#card.on .sg{animation:rv .9s ease forwards;animation-delay:calc(1.2s + var(--n,3)*.45s)}
+#card .hr{display:block;margin:14px auto 0;width:34px;height:auto;opacity:0}
+#card.on .hr{animation:rv 1s ease forwards;animation-delay:calc(1.6s + var(--n,3)*.45s)}
+#cx{position:absolute;top:8px;right:10px;width:38px;height:38px;padding:0;border-radius:50%;font-size:20px;line-height:1;background:rgba(255,255,255,.55);border:0;color:#27304a;-webkit-backdrop-filter:none;backdrop-filter:none}
+#lb{position:fixed;display:none;z-index:3;background:none;border:0;box-shadow:none;border-radius:14px;padding:0;cursor:pointer;-webkit-backdrop-filter:none;backdrop-filter:none}
+#lh{position:fixed;z-index:3;transform:translateX(-50%);font:italic 500 20px 'Cormorant Garamond',Georgia,serif;color:var(--c);pointer-events:none;visibility:hidden;white-space:nowrap}
+#lh span{display:block;animation:br 3.2s ease-in-out infinite}
+#ui{z-index:8}#toast{z-index:9}
+@media (prefers-reduced-motion:reduce){#card,#card p,#card .sg,#card .hr{transition:none;animation:none!important;opacity:1!important;transform:none!important}#card:not(.on){opacity:0!important}#lh span{animation:none}}
