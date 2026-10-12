@@ -1,3 +1,160 @@
+// ===== Van Gogh · Đêm đầy sao: trăng vàng xoáy dao sơn dầu + sóng xanh có xoáy gió (vẽ bằng code, có chuyển động nhẹ); tan thành đom đóm kiểu "búng tay" ngay trên cảnh đang chuyển động; toàn màn hình =====
+var VG={rp:null,ok:0,fs:-9,mr:30,Gr:70,as:0,g:0,fa:1,sc:{},bc:{},ed:[],ts:null,rdy:0,
+E:[]};
+const c01=x=>Math.min(1,Math.max(0,x)),vs=x=>(x=c01(x))*x*(3-2*x),rd=Math.random,
+// xanh đêm (cobalt/ultramarine) từ thẫm đến nhạt; vàng trăng từ kem đến vàng đậm (cam rất ít)
+CB=[[14,28,72],[20,42,98],[28,60,128],[42,84,156],[86,126,186],[150,180,220],[214,226,236]],
+MP=[[255,248,226],[255,238,176],[255,226,120],[254,208,76],[248,184,52],[236,150,34]],
+vrgb=(c,j)=>'rgb('+Math.max(0,Math.min(255,Math.round(c[0]+j)))+','+Math.max(0,Math.min(255,Math.round(c[1]+j)))+','+Math.max(0,Math.min(255,Math.round(c[2]+j)))+')';
+function vcv(w,h,d){const c=document.createElement('canvas');c.width=Math.ceil(w*d);c.height=Math.ceil(h*d);const x=c.getContext('2d');x.scale(d,d);return[c,x]}
+// nét dao sơn: dải dẹt thon hai đầu chạy theo đường P (bl nhỏ = đầu dao tù), màu chuyển nhẹ từ đầu đến cuối, thêm vài sợi vân mảnh sáng/tối chạy dọc để ra gờ sơn
+function vkr(x,P,wd,col,al,bl){const n=P.length;if(n<4)return;bl=bl||.55;const Lf=[],Rt=[],ph=rd()*6;
+for(let i=0;i<n;i++){const a=P[Math.max(0,i-1)],b=P[Math.min(n-1,i+1)],dx=b[0]-a[0],dy=b[1]-a[1],l=Math.hypot(dx,dy)||1,u=i/(n-1),w=wd*.5*Math.pow(Math.max(0,Math.sin(Math.PI*u)),bl)*(.8+.2*Math.sin(u*8+ph)),nx=-dy/l*w,ny=dx/l*w;Lf.push([P[i][0]+nx,P[i][1]+ny]);Rt.push([P[i][0]-nx,P[i][1]-ny])}
+const j=(rd()-.5)*18,gr=x.createLinearGradient(P[0][0],P[0][1],P[n-1][0],P[n-1][1]);gr.addColorStop(0,vrgb(col,j));gr.addColorStop(1,vrgb(col,j+(rd()-.5)*36));
+x.globalAlpha=al;x.fillStyle=gr;x.beginPath();x.moveTo(Lf[0][0],Lf[0][1]);for(let i=1;i<n;i++)x.lineTo(Lf[i][0],Lf[i][1]);for(let i=n-1;i>=0;i--)x.lineTo(Rt[i][0],Rt[i][1]);x.closePath();x.fill();
+x.lineCap='round';x.lineWidth=Math.max(.8,wd*.07);
+for(const[o,d]of[[-.25,24],[.28,-20]]){x.strokeStyle=vrgb(col,j+d);x.globalAlpha=al*.45;x.beginPath();for(let i=1;i<n-1;i++){const a=P[i-1],b=P[i+1],dx=b[0]-a[0],dy=b[1]-a[1],l=Math.hypot(dx,dy)||1,w=wd*Math.pow(Math.max(0,Math.sin(Math.PI*i/(n-1))),bl)*o;x.lineTo(P[i][0]-dy/l*w,P[i][1]+dx/l*w)}x.stroke()}
+x.globalAlpha=1}
+// bảng màu liên tục từ sát trăng ra ngoài (kem trắng → vàng chanh → vàng cadmium → cam đất → trắng ngọc → xanh lơ nhạt → xanh lam-lục → cobalt nhạt → cobalt → ultramarine → xanh thẫm); mỗi nét lấy màu nội suy, đôi khi pha với màu lân cận như sơn trộn ướt
+const CS=[[0,[246,232,190]],[.12,[232,196,118]],[.22,[210,152,66]],[.29,[180,114,46]],[.37,[214,222,214]],[.5,[140,184,212]],[.56,[84,150,180]],[.63,[60,112,176]],[.72,[36,72,150]],[.84,[24,46,108]],[1,[14,26,66]]];
+function vcol3(t){t=c01(t);let i=0;while(i<CS.length-2&&t>CS[i+1][0])i++;const a=CS[i],b=CS[i+1],f=c01((t-a[0])/(b[0]-a[0])),c=[0,1,2].map(k=>a[1][k]+(b[1][k]-a[1][k])*f);
+if(rd()<.3){const d=CS[Math.max(0,Math.min(CS.length-1,i+(rd()<.5?0:1)))][1];return[0,1,2].map(k=>c[k]*.65+d[k]*.35)}return c}
+// màu đĩa trăng theo bán kính t∈[0,1]: kem trắng → vàng chanh → vàng cadmium → cam đất ở viền
+function vdisc(t){t=c01(t);const S=[[0,[254,246,222]],[.35,[252,232,170]],[.65,[244,204,100]],[1,[222,158,62]]];let i=0;while(i<2&&t>S[i+1][0])i++;const a=S[i],b=S[i+1],f=c01((t-a[0])/(b[0]-a[0]));return[0,1,2].map(k=>a[1][k]+(b[1][k]-a[1][k])*f)}
+// nét cọ sơn dầu: nền đặc hơi tối rồi nhiều sợi lông cọ song song (mỗi sợi một sắc độ, đầu/đuôi lệch nhau, cuối nét cọ khô dần và đứt sợi), bề ngang hơi lượn dọc theo nét
+function vbs(x,P0,wd,col,al){const n=P0.length;if(n<4)return;const nx=[],ny=[],P=[];
+for(let i=0;i<n;i++){const a=P0[Math.max(0,i-1)],b=P0[Math.min(n-1,i+1)],dx=b[0]-a[0],dy=b[1]-a[1],l=Math.hypot(dx,dy)||1;nx.push(-dy/l);ny.push(dx/l)}
+const wb=rd()*6,wa=wd*.07;for(let i=0;i<n;i++){const d=wa*Math.sin(i/(n-1)*5+wb);P.push([P0[i][0]+nx[i]*d,P0[i][1]+ny[i]*d])}
+const wob=rd()*6,hw=u=>wd*.5*Math.pow(Math.max(0,Math.sin(Math.PI*u)),.5)*(.84+.16*Math.sin(u*7+wob)),j0=(rd()-.5)*10,e=Math.round((n-1)*.8);
+x.globalAlpha=al*.92;x.fillStyle=vrgb(col,j0-14);x.beginPath();
+for(let i=0;i<=e;i++){const w=hw(i/(n-1))*.9;x.lineTo(P[i][0]+nx[i]*w,P[i][1]+ny[i]*w)}for(let i=e;i>=0;i--){const w=hw(i/(n-1))*.9;x.lineTo(P[i][0]-nx[i]*w,P[i][1]-ny[i]*w)}x.closePath();x.fill();
+const nb=Math.max(6,Math.round(wd/2.4));x.lineCap='round';x.lineJoin='round';
+for(let b=0;b<nb;b++){const o=((b+.5)/nb-.5)*1.84,t0=rd()*.14,t1=rd()<.25?.6+rd()*.24:.84+rd()*.16,jl=(rd()-.5)*(b%3==0?32:20),c=[col[0]+jl+(rd()-.5)*6,col[1]+jl+(rd()-.5)*6,col[2]+jl+(rd()-.5)*6];x.lineWidth=Math.max(1.4,wd/nb*1.5);x.strokeStyle=vrgb(c,0);
+for(const[s0,s1,am]of[[t0,Math.min(t1,.74),.82+rd()*.18],[.7,t1,.56+rd()*.2]]){if(s1-s0<.06)continue;x.globalAlpha=al*am;x.beginPath();for(let i=0;i<n;i++){const u=i/(n-1);if(u<s0||u>s1)continue;const w=hw(u)*o;x.lineTo(P[i][0]+nx[i]*w,P[i][1]+ny[i]*w)}x.stroke()}}
+x.globalAlpha=1}
+// độ nổi của lớp sơn: lấy độ sáng làm độ cao rồi đổ sáng từ trên-trái (bỏ qua mép trong suốt để không có viền), thêm chút hạt vải canvas
+const VGL=(()=>{const t=new Uint8Array(256);for(let i=0;i<256;i++)t[i]=Math.round(255*Math.pow(i/255,1.03));return t})();
+function voil(c,k,sp,ag){const x=c.getContext('2d'),w=c.width,h=c.height,im=x.getImageData(0,0,w,h),d=im.data,l=new Float32Array(w*h);
+for(let i=0,o=0;i<w*h;i++,o+=4)l[i]=d[o]*.3+d[o+1]*.59+d[o+2]*.11;
+for(let y=1;y<h-1;y++)for(let i=y*w+1,e=y*w+w-1;i<e;i++){const o=i*4;if(!d[o+3])continue;const L=l[i],A=d[o+7]?l[i+1]:L,B=d[o+3+w*4]?l[i+w]:L,C=d[o-1]?l[i-1]:L,E=d[o+3-w*4]?l[i-w]:L,s0=(A+B-C-E)*k,s=(s0>0?.85:1.1)*Math.max(-46,Math.min(46,s0))+(sp&&s0>sp?Math.min(30,(s0-sp)*.9):0)+(rd()-.5)*6;let r=d[o]+s,g=d[o+1]+s,b=d[o+2]+s;if(ag){const L=r*.3+g*.59+b*.11;r=(L+(r-L)*.98)*1.01;g=(L+(g-L)*.98)*1.0;b=(L+(b-L)*.98)*.99;r=VGL[r<0?0:r>255?255:r|0];g=VGL[g<0?0:g>255?255:g|0];b=VGL[b<0?0:b>255?255:b|0]}d[o]=r;d[o+1]=g;d[o+2]=b}
+x.putImageData(im,0,0)}
+// dòng chảy quanh trăng (đơn vị: bán kính trăng): vòng quanh trăng, càng ra xa càng uốn lượn chữ S, kèm hai xoáy nhỏ; trả về hướng
+function vfield(x,y){const r=Math.hypot(x,y)||1,a=Math.atan2(y,x),th=a+1.5708+vs((r-1.6)/1.4)*(.12*Math.sin(2*a+1.2*r)+.06*Math.sin(3*a-r));let vx=Math.cos(th),vy=Math.sin(th);
+for(const e of VG.E){const dx=x-e[0],dy=y-e[1],d=Math.hypot(dx,dy)||1,w=Math.exp(-Math.pow(d/(e[2]*1.6),2))*3.5;vx+=w*(-dy/d*e[3]-dx/d*.35);vy+=w*(dx/d*e[3]-dy/d*.35)}
+return Math.atan2(vy,vx)}
+// các đường dòng cách đều nhau (kiểu Jobard–Lefer rút gọn): mỗi đường chảy mượt theo trường dòng, đường sau chỉ chen vào chỗ trống giữa các đường trước, nên nét song song và không chồng chéo
+function vlines(){const ds=.13,dt=.55*ds,h=.05,G=new Map(),kk=(i,j)=>i*8192+j,
+add=P=>{for(const p of P){const k=kk(Math.floor(p[0]/ds),Math.floor(p[1]/ds));let a=G.get(k);if(!a){a=[];G.set(k,a)}a.push(p)}},
+free=(x,y,d)=>{const i=Math.floor(x/ds),j=Math.floor(y/ds);for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++){const q=G.get(kk(i+a,j+b));if(q)for(const p of q)if(Math.hypot(p[0]-x,p[1]-y)<d)return false}return true},
+Re=a=>2.5+.35*Math.sin(2*a+1)+.15*Math.sin(5*a),
+tr=(x0,y0,sg,skip)=>{const P=[];let x=x0,y=y0,pa=vfield(x,y)+(sg<0?3.1416:0);
+for(let i=0;i<190;i++){let d=vfield(x,y)+(sg<0?3.1416:0)-pa;while(d>3.1416)d-=6.2832;while(d<-3.1416)d+=6.2832;pa+=d*.5;x+=Math.cos(pa)*h;y+=Math.sin(pa)*h;
+const r=Math.hypot(x,y);if(r<1.03||r>Re(Math.atan2(y,x)))break;let hit=0;for(const e of VG.E)if(Math.hypot(x-e[0],y-e[1])<e[2]*.8)hit=1;if(hit)break;
+if(i>=skip&&!free(x,y,dt))break;if(sg>0&&i>25&&Math.hypot(x-x0,y-y0)<dt){P.closed=1;break}P.push([x,y])}return P},L=[];
+for(const[dr,na,th,mn]of[[.85,14,.8,9],[.5,40,.88,12],[.35,72,.9,14],[.25,100,.78,16]])for(let r=1.06,j=0;r<2.6;r+=ds*dr,j++)for(let k=0;k<na;k++){const a=(k+.37*j)/na*6.2832,x=Math.cos(a)*r,y=Math.sin(a)*r;if(!free(x,y,ds*th))continue;let hit=0;for(const e of VG.E)if(Math.hypot(x-e[0],y-e[1])<e[2]*.9)hit=1;if(hit)continue;
+const F=tr(x,y,1,0);add(F);const B=F.closed?[]:tr(x,y,-1,6);add(B);const P=B.reverse().concat([[x,y]],F);if(P.length>mn)L.push(P)}
+return L}
+// màu theo bán kính t∈[0,1] từ trong ra ngoài: kem trắng → vàng → vàng cam → kem xanh → xanh nhạt → cobalt → xanh thẫm (dải màu liền nhau giống các vòng quầng trong tranh)
+function vcol2(t){const B=[[MP[0],[255,252,235]],[MP[1],[255,240,190]],[MP[3],MP[4]],[[236,232,206],[214,226,236]],[[176,206,236],[150,184,226]],[CB[4],CB[3]],[CB[3],CB[2]],[CB[1],CB[2]],[CB[0],CB[1]]],b=B[[.17,.26,.35,.45,.55,.66,.77,.88,2].findIndex(v=>t<v)];return b[rd()*b.length|0]}
+// bước 1a: tính các đường dòng, dựng khung ba lớp vành (kem-vàng cam / kem-xanh nhạt / xanh nhạt-cobalt-xanh thẫm; mỗi lớp sau này xoay quanh trăng với tốc độ riêng), nền xanh thẫm ở lớp ngoài và lớp tô lót màu theo từng dải để chỗ hở giữa các nét lộ đúng màu dải
+function vP(){const L=vlines(),R=L.map(P=>{let s=0;for(const p of P)s+=Math.hypot(p[0],p[1]);const cum=[0];for(let i=1;i<P.length;i++)cum.push(cum[i-1]+Math.hypot(P[i][0]-P[i-1][0],P[i][1]-P[i-1][1]));return{P,cum,rm:s/P.length}}).sort((a,b)=>b.rm-a.rm),HK=[215,275,315],CK=HK.map(h=>vcv(h*2,h*2,1));VG.LH=HK;VG.T={R,CK,HK};VG.LY=[];
+for(let i=0;i<14;i++){const a=rd()*6.2832,kk=.7+rd()*.7,px=315+Math.cos(a)*kk*100,py=315+Math.sin(a)*kk*100,rb=(.8+rd()*.2)*100,x=CK[2][1],gq=x.createRadialGradient(px,py,0,px,py,rb);gq.addColorStop(0,'rgba(24,42,96,.9)');gq.addColorStop(.7,'rgba(20,36,84,.6)');gq.addColorStop(1,'rgba(16,28,64,0)');x.fillStyle=gq;x.fillRect(0,0,630,630)}
+{const x=CK[2][1],cq=x.createRadialGradient(315,315,150,315,315,200);cq.addColorStop(0,'#000');cq.addColorStop(1,'rgba(0,0,0,0)');x.globalCompositeOperation='destination-out';x.fillStyle=cq;x.fillRect(0,0,630,630);x.globalCompositeOperation='source-over'}
+{const[c,x]=vcv(430,430,1),q=x.createRadialGradient(215,215,90,215,215,210);[[.083,'200,150,70,.95'],[.29,'176,112,52,.95'],[.46,'140,92,48,.95'],[.62,'170,180,176,.9'],[.79,'70,120,160,.85'],[.92,'34,62,120,.6'],[1,'20,34,76,0']].forEach(([p,v])=>q.addColorStop(p,'rgba('+v+')'));x.fillStyle=q;x.fillRect(0,0,430,430);VG.mu=c}}
+// bước 1b: vẽ các nét dao của một lớp vành (đường nào thuộc lớp nào theo bán kính trung bình; đường ngoài vẽ trước) rồi làm nổi gờ sơn
+function vPk(k){const{R,CK,HK}=VG.T,Hh=HK[k],x=CK[k][1];
+for(const l of R){if((l.rm<1.75?0:l.rm<2.25?1:2)!==k)continue;const P=l.P,n=P.length,cum=l.cum,tot=cum[n-1],Ld=1+rd()*.9,af=l.rm>2.1?1-.55*vs((l.rm-2.1)/.5):1;
+for(let s0=-rd()*Ld*.6;s0<tot;s0+=Ld*.85){const a0=Math.max(0,s0),a1=Math.min(tot,s0+Ld);if(a1-a0<.35)continue;const Q=[];for(let i=0;i<n;i++)if(cum[i]>=a0&&cum[i]<=a1&&(Q.length===0||i%2===0))Q.push([Hh+P[i][0]*100,Hh+P[i][1]*100]);if(Q.length<5)continue;
+vbs(x,Q,23*(.92+.16*rd())*(l.rm>2.2?.9:1),vcol3((l.rm-1)/1.6+(rd()-.5)*.03),.97*af)}}
+voil(CK[k][0],.75,30,1);VG.LY[k]=CK[k][0];if(k==2)VG.T=null}
+// bước 2: đĩa trăng tròn: nền tô sáng cố định + 3 lớp vảy dao dài xếp vòng đồng tâm (trong, giữa, ngoài) mỗi lớp xoay chậm với tốc độ riêng, vài nhánh xoắn sáng mờ để thấy rõ chuyển động, viền sáng; cùng quầng sáng và chấm sáng trên cùng
+function vC(){const M=130;let[c,x]=vcv(M*2,M*2,1),q=x.createRadialGradient(M-20,M-22,0,M,M,100);
+q.addColorStop(0,'#fcf2d6');q.addColorStop(.3,'#f6dea0');q.addColorStop(.7,'#e8be64');q.addColorStop(1,'#c88c3c');x.fillStyle=q;x.beginPath();x.arc(M,M,97,0,6.2832);x.fill();VG.mc0=c;
+const DC=[0,1,2].map(()=>{const d=vcv(M*2,M*2,1);d[1].beginPath();d[1].arc(M,M,98,0,6.2832);d[1].clip();return d}),DS=[.14,.09,.055];
+for(let r=94;r>8;r-=9){const li=r>66?2:r>36?1:0,x2=DC[li][1],t=r/98,len=Math.max(22,r*.72),n=Math.max(5,Math.round(6.2832*r/(len*.8))),o=rd()*6.2832;
+for(let i=0;i<n;i++){const a=o+i/n*6.2832+(rd()-.5)*.1,px=M+Math.cos(a)*r,py=M+Math.sin(a)*r,ang=a+1.5708+.28-.18*t+(rd()-.5)*.12,L=len*(.9+rd()*.25),P=[],col=vdisc(t+(rd()-.5)*.14);
+for(let k=0;k<13;k++){const u=k/12-.5,cu=-L*L/(8*Math.max(r,8))*(1-4*u*u)*1.1;P.push([px+Math.cos(ang)*u*L-Math.sin(ang)*cu,py+Math.sin(ang)*u*L+Math.cos(ang)*cu])}
+vbs(x2,P,16+rd()*5,col,.97)}}
+VG.DK=DC.map((d,i)=>{voil(d[0],.65,28,1);return{c:d[0],w:DS[i]}});
+[c,x]=vcv(M*2,M*2,1);for(let arm=0;arm<2;arm++){const P=[];for(let k=0;k<=24;k++){const f=k/24,r=6+f*88,a=arm*3.1416-f*3.6;P.push([M+Math.cos(a)*r,M+Math.sin(a)*r])}vkr(x,P,7,[255,246,214],.32,.6)}VG.DA=c;
+[c,x]=vcv(M*2,M*2,1);x.save();x.beginPath();x.arc(M,M,97,0,6.2832);x.clip();q=x.createRadialGradient(M-18,M-20,0,M-18,M-20,60);q.addColorStop(0,'rgba(255,248,224,.22)');q.addColorStop(1,'rgba(255,248,224,0)');x.fillStyle=q;x.fillRect(0,0,M*2,M*2);x.restore();
+q=x.createRadialGradient(M-18,M-20,56,M-18,M-20,122);q.addColorStop(0,'rgba(214,132,30,0)');q.addColorStop(1,'rgba(214,132,30,.32)');x.save();x.beginPath();x.arc(M,M,97,0,6.2832);x.clip();x.fillStyle=q;x.fillRect(0,0,M*2,M*2);x.restore();
+x.strokeStyle='rgba(240,226,176,.4)';x.lineWidth=3;x.beginPath();x.arc(M,M,96,0,6.2832);x.stroke();
+q=x.createRadialGradient(M,M,97,M,M,124);q.addColorStop(0,'rgba(70,34,8,.32)');q.addColorStop(1,'rgba(70,34,8,0)');x.fillStyle=q;x.beginPath();x.arc(M,M,124,0,6.2832);x.arc(M,M,97,0,6.2832,true);x.fill();VG.mc1=c;
+const Gr=240;[c,q]=vcv(Gr*2,Gr*2,1);const gq=q.createRadialGradient(Gr,Gr,90,Gr,Gr,Gr);
+gq.addColorStop(0,'rgba(252,226,160,.82)');gq.addColorStop(.16,'rgba(248,210,124,.5)');gq.addColorStop(.32,'rgba(242,200,120,.18)');gq.addColorStop(.62,'rgba(236,200,130,.05)');gq.addColorStop(1,'rgba(236,200,130,0)');q.fillStyle=gq;q.fillRect(0,0,Gr*2,Gr*2);VG.mg=c;
+const Bb=170;[c,q]=vcv(Bb*2,Bb*2,1);const bq=q.createRadialGradient(Bb,Bb,100,Bb,Bb,Bb);bq.addColorStop(0,'rgba(252,236,184,.4)');bq.addColorStop(1,'rgba(250,232,176,0)');q.fillStyle=bq;q.fillRect(0,0,Bb*2,Bb*2);VG.mb=c;
+// lớp phủ tối rìa rất nhẹ đứng yên phía trên sơn đang xoay, cho mảng sơn hòa vào nền đêm (không còn vết nứt hay mảng ố)
+{const U=310,[c,x]=vcv(U*2,U*2,1),q=x.createRadialGradient(U,U,160,U,U,U);q.addColorStop(0,'rgba(10,6,2,0)');q.addColorStop(.6,'rgba(10,6,2,.08)');q.addColorStop(1,'rgba(10,6,2,.34)');x.fillStyle=q;x.fillRect(0,0,U*2,U*2);VG.mv=c}
+}
+function vstep(){const f=VG.ts&&VG.ts.shift();if(f){f();if(VG.ts.length)setTimeout(vstep,40);else VG.rdy=1}}
+function vall(){if(!VG.ts)VG.ts=[vP,()=>vPk(0),()=>vPk(1),()=>vPk(2),vC];while(VG.ts.length)VG.ts.shift()();VG.rdy=1}
+function skyInit(){const mr=Math.max(24,Math.min(W,H)*.07);VG.mr=mr;VG.Gr=mr*2.4;
+if(!VG.ts&&!VG.rdy){VG.ts=[vP,()=>vPk(0),()=>vPk(1),()=>vPk(2),vC];setTimeout(vstep,250)}
+// tính năng ẩn: sau khi thư đã rơi xuống, chạm vào mặt trăng để quay lại từ đầu (không có chữ hướng dẫn)
+if(!VG.ok){VG.ok=1;cv.addEventListener('click',e=>{if(go===null||!LS||lopen||VG.rp)return;if(Math.hypot(e.clientX-W*.7,e.clientY-H*.2)<Math.max(VG.mr*1.7,46))replay()})}}
+// mặt trăng sống: quầng sáng thở; bốn lớp vành sơn quanh trăng xoay chậm cùng chiều, càng gần trăng càng nhanh nên các dải trượt qua nhau như dòng chảy; ba lớp vảy trong đĩa trăng cũng xoay chậm với tốc độ khác nhau; khi bấm trăng quầng sáng bừng lên một nhịp
+function moon(a){if(!VG.rdy)vall();const m=VG.mr,s=m/100,t=now()*SP,ap=vs(a),sc=.65+.35*ap,pu=VG.rp?Math.exp(-(now()-VG.rp.t0)*2.2):0,Gr=VG.Gr*(1+.2*pu),k=sc*.95*(1+.008*Math.sin(t*.6));
+g.save();g.translate(W*.7,H*.2);
+g.globalCompositeOperation='lighter';g.globalAlpha=Math.min(1,ap*(.8+.1*Math.sin(t*1.2)+.6*pu));g.drawImage(VG.mg,-Gr,-Gr,Gr*2,Gr*2);g.globalCompositeOperation='source-over';
+g.save();g.rotate((1-ap)*1.6);g.scale(k,k);g.globalAlpha=ap*.9;g.drawImage(VG.mu,-215*s,-215*s,430*s,430*s);g.globalAlpha=ap*.97;
+for(let i=2;i>=0;i--){const h=VG.LH[i];g.save();g.rotate([.1,.06,.035][i]*t);g.drawImage(VG.LY[i],-h*s,-h*s,h*2*s,h*2*s);g.restore()}
+g.restore();
+g.globalCompositeOperation='lighter';g.globalAlpha=ap*(.6+.6*pu);g.drawImage(VG.mb,-170*s,-170*s,340*s,340*s);g.globalCompositeOperation='source-over';
+g.globalAlpha=ap;g.drawImage(VG.mc0,-130*s,-130*s,260*s,260*s);
+for(let i=2;i>=0;i--){const d=VG.DK[i];g.save();g.rotate(d.w*t);g.drawImage(d.c,-130*s,-130*s,260*s,260*s);g.restore()}
+g.save();g.rotate(.09*t);g.globalAlpha=ap*.9;g.drawImage(VG.DA,-130*s,-130*s,260*s,260*s);g.restore();
+g.globalAlpha=ap;g.drawImage(VG.mc1,-130*s,-130*s,260*s,260*s);
+g.save();g.scale(sc*.95,sc*.95);g.drawImage(VG.mv,-310*s,-310*s,620*s,620*s);g.restore();
+g.restore();g.globalAlpha=1}
+// quầng sáng đom đóm có màu của điểm gốc (gom theo màu để vẽ nhanh); trả về khoá màu
+function vsp(r,g_,b){const k=(r>>5<<6)|(g_>>5<<3)|(b>>5);if(!VG.sc[k]){const[c,x]=vcv(32,32,1),R=(r>>5<<5)+16,G=(g_>>5<<5)+16,B=(b>>5<<5)+16,q=x.createRadialGradient(16,16,0,16,16,16);q.addColorStop(0,'#fff');q.addColorStop(.16,'rgb('+R+','+G+','+B+')');q.addColorStop(.45,'rgba('+R+','+G+','+B+',.3)');q.addColorStop(1,'rgba('+R+','+G+','+B+',0)');x.fillStyle=q;x.fillRect(0,0,32,32);VG.sc[k]=c;VG.bc[k]='rgb('+R+','+G+','+B+')'}return k}
+// quay lại kiểu "búng tay": cảnh vẫn tiếp tục chuyển động như bình thường; một làn sóng quét từ góc dưới trái lên góc trên phải, mỗi ô ảnh mờ dần (lớp đen mềm phủ lên cảnh sống) và bong ra thành đom đóm có quầng sáng cùng bụi sáng nhỏ, đều mang màu của điểm gốc
+function replay(){lshow(false);
+const gs=Math.max(5,Math.round(Math.sqrt(W*H/16000))),cw=Math.ceil(W/gs),ch=Math.ceil(H/gs),u0=Math.hypot(W,H)/1000,[sm,mx]=vcv(cw,ch,1),th=-.5,wx=Math.cos(th),wy=Math.sin(th),pj=(x,y)=>x*wx+y*wy,ps=[pj(0,0),pj(W,0),pj(0,H),pj(W,H)],p0=Math.min(...ps),pl=Math.max(...ps)-p0,Tm=new Float32Array(cw*ch),qa=new Float32Array(cw*ch),lc=[];let dt=null,q0=9,q1=-9;
+try{mx.imageSmoothingQuality='high';mx.drawImage(cv,0,0,cw,ch);dt=mx.getImageData(0,0,cw,ch).data}catch(_){}
+for(let j=0;j<ch;j++)for(let i=0;i<cw;i++){const k=j*cw+i,x=(i+.5)*gs,y=(j+.5)*gs,q=c01((pj(x,y)-p0)/pl);qa[k]=q;
+const o=k*4,r=dt?dt[o]:120,gg=dt?dt[o+1]:200,b=dt?dt[o+2]:255,m=Math.max(r,gg,b);if(m<34)continue;q0=Math.min(q0,q);q1=Math.max(q1,q);
+const f=Math.min(2.4,Math.max(1,160/m));lc.push({x,y,m,ci:k,k:vsp(Math.min(255,r*f),Math.min(255,gg*f),Math.min(255,b*f))})}
+const qr=Math.max(.05,q1-q0);
+for(let j=0;j<ch;j++)for(let i=0;i<cw;i++){const k=j*cw+i,x=(i+.5)*gs,y=(j+.5)*gs,nz=Math.sin(x*.011+y*.007)*.5+Math.sin(x*.023-y*.017+1.7)*.3+Math.sin(y*.031+x*.005+4.1)*.2;Tm[k]=.3+4.4*(.82*c01((qa[k]-q0)/qr)+.12*(nz*.5+.5)+.06*rd())}
+const gl=[],bk={},pg=Math.min(1,2400/Math.max(1,lc.filter(c=>c.m>=90).length));
+for(const c of lc){const T=Tm[c.ci];if(c.m>=90&&rd()<pg)gl.push({x:c.x+(rd()-.5)*gs,y:c.y+(rd()-.5)*gs,k:c.k,ts:T+.05+rd()*.3,sv:.75+rd()*.5,p:rd()*6.28,w:.6+rd()*1.4,r:gs*(1.2+rd()*1.4),dd:0});
+for(let s=c.m>=190?2:1;s>0;s--)(bk[c.k]=bk[c.k]||[]).push({x:c.x+(rd()-.5)*gs,y:c.y+(rd()-.5)*gs,ts:T+rd()*.4,sv:.75+rd()*.5,p:rd()*6.28,w:.6+rd()*1.4,s:gs*(.22+rd()*.2),dd:0})}
+VG.tm=Tm;VG.md=mx.createImageData(cw,ch);VG.mcv=sm;VG.mx=mx;VG.cn=cw*ch;VG.fl=gl;VG.bk=bk;VG.u0=u0;VG.ct=wx;VG.st=wy;VG.tl=0;VG.rp={t0:now(),ph:0}}
+// một hạt: gió thổi chung một hướng lên trên-phải tăng dần, thêm dòng xoáy mượt và chút lung lay riêng; trả về tuổi, -1 nếu chưa bong ra, -2 nếu đã ra khỏi khung
+function vmv(f,tp,dt){const a=tp-f.ts;if(a<0)return -1;
+const u0=VG.u0,k=6.283/(260*u0),s=u0*(14+250*vs(a/3.2))*f.sv,C=u0*45*vs(a/1.2),a1=k*f.x+.9*tp,a2=k*f.y-.7*tp,b1=2.3*k*f.x-.6*tp,b2=2.3*k*f.y+.8*tp;
+f.x+=(VG.ct*s-C*Math.sin(a1)*Math.sin(a2)-.4*C*Math.sin(b1)*Math.sin(b2)+Math.sin(tp*f.w+f.p)*6*u0)*dt;
+f.y+=(VG.st*s-C*Math.cos(a1)*Math.cos(a2)-.4*C*Math.cos(b1)*Math.cos(b2)+Math.cos(tp*f.w*1.3+f.p)*6*u0)*dt;
+if(f.x<-80||f.x>W+80||f.y<-80||f.y>H+80){f.dd=1;return -2}return a}
+// vẽ đàn: đom đóm có quầng sáng (chói lên rồi dịu) và bụi sáng nhỏ gom theo màu; trả về số hạt còn lại
+function vfl(tp,dt){g.globalCompositeOperation='lighter';let n=0;
+for(const f of VG.fl){if(f.dd)continue;const a=vmv(f,tp,dt);if(a===-1){n++;continue}if(a<0)continue;n++;const e=Math.exp(-a*3),z=f.r*(1+.6*e);g.globalAlpha=c01(vs(a/.5)*(.6+.4*Math.sin(tp*f.w*2+f.p))*(1+.5*e));g.drawImage(VG.sc[f.k],f.x-z/2,f.y-z/2,z,z)}
+g.globalAlpha=.8;
+for(const k in VG.bk){g.fillStyle=VG.bc[k];for(const f of VG.bk[k]){if(f.dd)continue;const a=vmv(f,tp,dt);if(a===-1){n++;continue}if(a<0)continue;n++;const z=f.s*(1+.5*Math.exp(-a*3))*Math.min(1,.25+a*2.5)*(.85+.15*Math.sin(tp*f.w*2+f.p));g.fillRect(f.x-z/2,f.y-z/2,z,z)}}
+g.globalCompositeOperation='source-over';g.globalAlpha=1;return n}
+// pha 1: cảnh sống mờ dần theo làn sóng (lớp đen mềm), đom đóm bong ra; pha 2: đom đóm xanh từ ngoài bay về tụ thành trái tim (đàn cũ vẫn đang bay ra phía trên)
+function over(){const r=VG.rp;if(!r)return;const tp=now()-r.t0,dt=Math.min(.05,Math.max(0,tp-VG.tl));VG.tl=tp;
+if(!r.ph){g.globalCompositeOperation='source-over';g.globalAlpha=1;
+const d=VG.md.data,Tm=VG.tm;for(let i=0;i<VG.cn;i++)d[i*4+3]=vs((tp-Tm[i])/.9)*255;VG.mx.putImageData(VG.md,0,0);g.imageSmoothingEnabled=true;g.drawImage(VG.mcv,0,0,W,H);
+vfl(tp,dt);
+try{au.volume=Math.max(0,1-tp/5.9)}catch(_){}
+if(tp>=5.9){reset();try{au.volume=1}catch(_){}$('#hint').style.visibility='hidden';VG.mcv=VG.mx=VG.md=VG.tm=null;
+const L=Math.hypot(W,H);for(const q of P){const a=rd()*6.2832,ca=Math.cos(a),sa=Math.sin(a),t=1/Math.max(Math.abs(ca)/(W/2+60),Math.abs(sa)/(Math.max(cy,H-cy)+60))*(1+rd()*.25);q.sx=cx+ca*t;q.sy=cy+sa*t;q.d=rd()*.4;q.cv=(rd()-.5)*L*.35;q.al=0}
+VG.as=1;VG.g=0;VG.fa=0;r.ph=1;r.t1=now()}
+return}
+const gg=c01((now()-r.t1)/4);VG.g=gg;VG.fa=vs((gg-.1)/.6);
+if(VG.fl&&(!vfl(tp,dt)||tp>11)){VG.fl=null;VG.bk=null}
+if(gg>.92)$('#hint').style.visibility='visible';
+if(gg>=1&&!r.d){r.d=1;VG.as=0;VG.fa=1;for(const q of P)q.al=null;cv.style.cursor='pointer'}
+if(r.d&&!VG.fl)VG.rp=null}
+// hạt trái tim bay từ ngoài khung vào theo đường cong, mỗi hạt một nhịp riêng
+function vas(q){const e=vs((VG.g-q.d)/.6),tx=q.x,ty=q.y,dx=q.sx-tx,dy=q.sy-ty,l=Math.hypot(dx,dy)||1,c=Math.sin(3.1416*e)*q.cv*(1-e);q.x=tx+dx*(1-e)-dy/l*c;q.y=ty+dy*(1-e)+dx/l*c;q.al=.25+.75*e}
+// toàn màn hình khi chạm trái tim; giữ nguyên đàn đom đóm khi khung hình đổi cỡ
+function goFull(){VG.fs=now();const e=document.documentElement,f=e.requestFullscreen||e.webkitRequestFullscreen;if(f&&!document.fullscreenElement&&!document.webkitFullscreenElement)try{const p=f.call(e);p&&p.catch&&p.catch(()=>{})}catch(_){}}
+function rsz(){const f=F,p=P,w=W,h=H,z=now()-VG.fs<2.5&&go!==null;init();if(z){F=f;P=p;const a=W/w,b=H/h;for(const q of f.concat(p)){q.x*=a;q.y*=b}}}
+
 // ================= CẤU HÌNH: SỬA Ở ĐÂY =================
 // Nội dung bức thư: người nhận, người gửi, và từng đoạn lời chúc
 const LETTER={to:'Kim Khánh Linh',from:'Người gửi',body:['Chúc mừng ngày Phụ nữ Việt Nam 20/10!','Chúc bạn luôn rạng rỡ như ánh trăng, dịu dàng như những chùm linh lan, và mỗi ngày đều có thật nhiều niềm vui.','Mong những điều bạn ước sẽ nở hoa đúng lúc, và bạn luôn được yêu thương như bạn xứng đáng.']};
@@ -22,7 +179,7 @@ W=innerWidth;H=innerHeight;D=Math.min(devicePixelRatio||1,innerWidth<600?1.5:2);
 cx=W/2;cy=H*.45;u=Math.min(Math.min(W,H)*.19,150)/16;$('#hint').style.top=cy+u*17+18+'px';
 F=Array.from({length:Math.max(40,Math.min(100,W*H/16000|0))},()=>mkf({x:R()*W,y:R()*H}));
 P=Array.from({length:1100},(_,i)=>{const o=i%4==0,t=R()*6.2832;let x,y;if(o){[x,y]=hOut()}else{do{x=(R()*2-1)*16;y=-17+R()*29}while(!inHeart(x,y))}return mkf({ux:x,uy:y,k:1,o,r:o?12+R()*12:9+R()*8,am:.5+R()*1.6,ox:0,oy:0,fr:0,keep:R()<.4})});
-if(go!==null)P.forEach(q=>{q.fr=1;q.x=R()*W;q.y=R()*H});build()}
+if(go!==null)P.forEach(q=>{q.fr=1;q.x=R()*W;q.y=R()*H});build();skyInit()}
 function mov(f,t){
 f.a+=Math.sin(t*f.w+f.p)*.03;
 if(f.v0)f.v+=(f.v0-f.v)*.005;
@@ -32,10 +189,10 @@ function dr(f,t,m){const w=.5+.5*Math.sin(t*f.f*3+f.p);g.globalAlpha=(.25+.75*w*
 function hp(q,t,b,sc){
 const k=q.k*sc,x=X(q.ux,k)+Math.cos(t*q.w+q.p)*q.am*u/3,y=Y(q.uy,k)+Math.sin(t*q.w*1.3+q.p)*q.am*u/3;
 const dx=x-ptr.x,dy=y-ptr.y,d=Math.hypot(dx,dy)||1,tx=d<80?dx/d*(80-d)*.8:0,ty=d<80?dy/d*(80-d)*.8:0;
-q.ox+=(tx-q.ox)*.12;q.oy+=(ty-q.oy)*.12;q.x=x+q.ox;q.y=y+q.oy;
-const s=q.r*(.9+.4*b);g.globalAlpha=(.25+.55*(.5+.5*Math.sin(t*q.w*2.2+q.p*3)))*(q.o?1:.85);g.drawImage(SPR,q.x-s/2,q.y-s/2,s,s)}
+q.ox+=(tx-q.ox)*.12;q.oy+=(ty-q.oy)*.12;q.x=x+q.ox;q.y=y+q.oy;if(VG.as)vas(q);
+const s=q.r*(.9+.4*b);g.globalAlpha=(.25+.55*(.5+.5*Math.sin(t*q.w*2.2+q.p*3)))*(q.o?1:.85)*(q.al==null?1:q.al);g.drawImage(SPR,q.x-s/2,q.y-s/2,s,s)}
 function world(fn,a){g.save();g.translate(cx,H*.62);g.scale(SC,SC);g.translate(-cx,-H*.62);fn(a);g.restore()}
-function moon(a){
+function moon0(a){
 const mx=W*.7,my=H*.2,r=Math.max(24,Math.min(W,H)*.07),gr=g.createRadialGradient(mx,my,r*.7,mx,my,r*6);
 gr.addColorStop(0,'rgba(190,220,255,.38)');gr.addColorStop(1,'rgba(190,220,255,0)');
 g.globalAlpha=a;g.fillStyle=gr;g.fillRect(mx-r*6,my-r*6,r*12,r*12);
@@ -162,7 +319,7 @@ const lt2=(A,u)=>{const f=u*FT.N,i=Math.min(FT.N-1,f|0),w=f-i;return A[i]*(1-w)+
 function fallAt(u){const P=lt2(FT.P,u),ph=lt2(FT.PH,u),en=sm(u/.3)*Math.pow(1-sm((u-.72)/.28),.9);
 return[fx+(tx-fx)*(.5*sm(u)+.5*P)+.22*lw*en*Math.sin(ph),fy+(ty-fy)*P,.17*en*Math.cos(ph+.3)-.12*sm(u),1-.05*en*(.5+.5*Math.sin(ph*.5+.8))]}
 function lgeom(){lw=Math.min(W,H)*(W<H?.3:.2);lh=lw*200/280;fx=W<H?cx:cx-W*.14;fy=H*.22;tx=cx+(W<H?0:W*.02);ty=H*.905-lh*.5;LP=[];SD=[];PF=null;mkFall();slideD=Math.sign(Math.cos(FT.PH[FT.N]+.3))*lw*.04;if(lsh)lshow(true)}
-function lshow(on){lsh=on;const b=$('#lb'),h=$('#lh');if(on){const bw=Math.max(lw*1.4,70),bh=Math.max(lh*1.6,70);b.style.cssText=`display:block;left:${tx-bw/2}px;top:${ty-bh/2}px;width:${bw}px;height:${bh}px`;h.style.cssText=`left:${tx}px;top:${ty-bh/2-34}px;visibility:visible`}else{b.style.display='none';h.style.visibility='hidden'}}
+function lshow(on){if(VG.rp&&on)return;lsh=on;const b=$('#lb'),h=$('#lh');if(on){const bw=Math.max(lw*1.4,70),bh=Math.max(lh*1.6,70);b.style.cssText=`display:block;left:${tx-bw/2}px;top:${ty-bh/2}px;width:${bw}px;height:${bh}px`;h.style.cssText=`left:${tx}px;top:${ty-bh/2-34}px;visibility:visible`}else{b.style.display='none';h.style.visibility='hidden'}}
 function fillCard(){$('#ct').textContent='Gửi '+LETTER.to+',';$('#cb').innerHTML=LETTER.body.map((s,i)=>`<p style="--i:${i}">${s}</p>`).join('');$('#cs').textContent=LETTER.from;$('#card').style.setProperty('--n',LETTER.body.length)}
 function openCard(){if(lopen||!lsh)return;lopen=true;lshow(false);const c=$('#card'),cw=Math.min(W*.86,460);c.style.display='block';c.style.setProperty('--dx',tx-W/2+'px');c.style.setProperty('--dy',ty-H/2+'px');c.style.setProperty('--s',Math.max(.08,lw/cw));void c.offsetWidth;c.classList.add('on');$('#bd').classList.add('on')}
 function closeCard(){if(!lopen)return;$('#card').classList.remove('on');$('#bd').classList.remove('on');setTimeout(()=>{$('#card').style.display='none';lopen=false;if(LS)lshow(true)},950)}
@@ -214,23 +371,23 @@ const wa=on?cl((k-.8)/2):0,da=on?cl((SING+TX+.15-k)/.3):1,dm=on?1-.62*cl(k/2):1,
 SC=z;
 if(wa>0)world(moon,wa);if(on)garden(t,k-SING-FSTART-gOff);
 g.globalCompositeOperation='lighter';
-if(hg>0){g.globalAlpha=(.16+.1*b)*hg;g.drawImage(SPR,cx-u*24,cy-u*24,u*48,u*48)}
-for(const f of F){mov(f,t);dr(f,t,dm)}
+if(hg>0){g.globalAlpha=(.16+.1*b)*hg*VG.fa;g.drawImage(SPR,cx-u*24,cy-u*24,u*48,u*48)}
+for(const f of F){mov(f,t);dr(f,t,dm*VG.fa)}
 for(const q of P){if(q.fr){const kv=q.keep?1:cl(1-(k-2.5)/2.5);if(kv>0){mov(q,t);dr(q,t,dm*kv)}}else hp(q,t,b,sc)}
 g.globalCompositeOperation='source-over';
 if(on)letter(t,k-SING-FSTART-gOff);
 if(wa*da>0)world(duo,wa*da);
 if(on&&k<TUN+.2)trans(k,e);
 if(on&&k>=SING&&k<SING+TEND)sweep(t,k);
-requestAnimationFrame(frame)}
+over(t);requestAnimationFrame(frame)}
 let tm;function say(s){const el=$('#toast');el.textContent=s;el.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>el.classList.remove('on'),4200)}
 function reset(){go=null;sw=[];gOff=0;lOff=0;LP=[];SD=[];PF=null;hideCard();lshow(false);au.pause();au.currentTime=0;init();$('#hint').style.visibility='visible'}
 addEventListener('pointermove',e=>{ptr={x:e.clientX,y:e.clientY}});
 addEventListener('pointerup',e=>{if(e.pointerType!=='mouse')ptr={x:-999,y:-999}});
 addEventListener('pointerdown',e=>{ptr={x:e.clientX,y:e.clientY}});
 cv.addEventListener('click',e=>{
-if(go!==null||e.target.closest('button')||Math.hypot(e.clientX-cx,e.clientY-cy)>u*17)return;
-go=now();aOK=true;cv.style.cursor='default';au.currentTime=0;au.play().catch(()=>{aOK=false;say('Không thấy nhac.m4a cạnh file này, cảnh vẫn chạy nhưng không có tiếng')});
+if(go!==null||VG.rp||e.target.closest('button')||Math.hypot(e.clientX-cx,e.clientY-cy)>u*17)return;
+go=now();aOK=true;cv.style.cursor='default';goFull();au.currentTime=0;au.play().catch(()=>{aOK=false;say('Không thấy nhac.m4a cạnh file này, cảnh vẫn chạy nhưng không có tiếng')});
 pulse=1;$('#hint').style.visibility='hidden';
 for(const q of P){q.fr=1;q.v0=q.v;q.v*=4;const a=Math.atan2(q.y-cy,q.x-cx)+(R()-.5),m=4+R()*10;q.kx=Math.cos(a)*m;q.ky=Math.sin(a)*m}
 for(const f of F){const a=Math.atan2(f.y-cy,f.x-cx),d=Math.hypot(f.x-cx,f.y-cy)||1,m=10*Math.exp(-d/(u*30));f.kx+=Math.cos(a)*m;f.ky+=Math.sin(a)*m}});
@@ -238,7 +395,7 @@ const lbn=document.createElement('button');lbn.textContent='Xem cảnh thư';lbn
 const hb=document.createElement('button');hb.textContent='Xem cảnh hoa';hb.onclick=()=>seek(SING+FSTART-.3);$('#ui').append(hb);
 const jb=document.createElement('button');jb.textContent='Xem đoạn chuyển cảnh';jb.onclick=()=>seek(SING-2);$('#ui').append(jb);
 const rb=document.createElement('button');rb.textContent='Chơi lại';rb.onclick=reset;$('#ui').append(rb);const tg=document.createElement('button');tg.className='tg';tg.textContent='≡';tg.setAttribute('aria-label','Menu xem thử');tg.onclick=()=>$('#ui').classList.toggle('open');$('#ui').append(tg);
-addEventListener('resize',init);
+addEventListener('resize',rsz);
 if(!/dev|hoa|thu/.test(location.hash))$('#ui').style.display='none';
 fillCard();$('#cx').onclick=closeCard;$('#bd').onclick=closeCard;$('#lb').onclick=openCard;addEventListener('keydown',e=>{if(e.key==='Escape')closeCard()});
 init();requestAnimationFrame(frame);if(/thu/.test(location.hash))seek(SING+FSTART+LSTART-.3);else if(/hoa/.test(location.hash))seek(SING+FSTART+8);
